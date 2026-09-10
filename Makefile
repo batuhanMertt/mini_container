@@ -36,8 +36,10 @@ check:
 	@test -z "$$(gofmt -l .)" || (echo "gofmt needed:"; gofmt -l .; exit 1)
 	go vet ./...
 	@for t in linux/amd64 linux/arm64 windows/amd64 windows/arm64 darwin/amd64 darwin/arm64; do \
-		echo "==> $$t"; \
-		GOOS=$${t%/*} GOARCH=$${t#*/} go build -o /dev/null ./... || exit 1; \
+		for pkg in ./cmd/mini-container ./cmd/mini-container-launcher; do \
+			echo "==> $$t $$pkg"; \
+			GOOS=$${t%/*} GOARCH=$${t#*/} go build -o /dev/null $$pkg || exit 1; \
+		done; \
 	done
 
 ## dist: build every published release asset into dist/
