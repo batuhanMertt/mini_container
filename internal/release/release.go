@@ -25,8 +25,10 @@ const (
 )
 
 // AssetName is the published name of the Linux runtime for an architecture.
+// The "-runtime" infix keeps it distinct from the launcher assets, which are
+// published for linux too and would otherwise overwrite it in the release.
 func AssetName(arch string) string {
-	return fmt.Sprintf("mini-container_linux_%s", arch)
+	return fmt.Sprintf("mini-container-runtime_linux_%s", arch)
 }
 
 type asset struct {
