@@ -1,0 +1,78 @@
+name: release
+
+# Publishes the runtime and the launcher whenever a version tag is pushed:
+#   git tag v0.1.0 && git push origin v0.1.0
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+
+      - name: Vet
+        run: go vet ./...
+
+      - name: Build release assets
+        env:
+          CGO_ENABLED: "0"
+        run: |
+          set -euo pipefail
+          VERSION="${GITHUB_REF_NAME:-dev}"
+          LDFLAGS="-s -w -X main.version=${VERSION}"
+          mkdir -p dist
+
+          # The runtime is Linux-only by design: it drives namespaces, cgroups
+          # v2 and chroot directly.
+          for arch in amd64 arm64; do
+            GOOS=linux GOARCH="$arch" go build -trimpath -ldflags "$LDFLAGS" \
+              -o "dist/mini-container_linux_${arch}" ./cmd/mini-container
+          done
+
+          # The launcher is what Windows and macOS users download: it inspects
+          # the host, picks the matching Linux binary above and runs it inside
+          # WSL2, Lima or Docker.
+          for target in windows/amd64 windows/arm64 darwin/amd64 darwin/arm64 linux/amd64 linux/arm64; do
+            os="${target%/*}"; arch="${target#*/}"
+            out="dist/mini-container_${os}_${arch}"
+            [ "$os" = windows ] && out="${out}.exe"
+            GOOS="$os" GOARCH="$arch" go build -trimpath -ldflags "$LDFLAGS" \
+              -o "$out" ./cmd/mini-container-launcher
+          done
+
+          cd dist && sha256sum * > checksums.txt && cat checksums.txt
+
+      - name: Publish release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: dist/*
+          generate_release_notes: true
+          body: |
+            ## Download
+
+            | Your machine | File |
+            | --- | --- |
+            | Windows (Intel/AMD) | `mini-container_windows_amd64.exe` |
+            | Windows (ARM) | `mini-container_windows_arm64.exe` |
+            | macOS (Apple Silicon) | `mini-container_darwin_arm64` |
+            | macOS (Intel) | `mini-container_darwin_amd64` |
+            | Linux | `mini-container_linux_amd64` / `_arm64` |
+
+            On Windows and macOS the downloaded file is the **launcher**. It
+            analyses your hardware, finds a Linux backend (WSL2, Lima or
+            Docker), downloads the matching `mini-container_linux_*` runtime
+            from this release and runs the container in it.
+
+            Check your machine first with `mini-container doctor`.
+
+            Verify a download against `checksums.txt`.
