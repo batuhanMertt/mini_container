@@ -24,14 +24,21 @@ jobs:
 
       - run: go vet ./...
 
-      # Every published target must keep compiling, including the non-Linux
-      # stub that replaces the runtime where its syscalls do not exist.
+      # Build the release commands by name rather than relying on ./..., which
+      # stays green even when a command directory is missing from the commit.
       - name: Cross-compile every release target
         env:
           CGO_ENABLED: "0"
         run: |
           set -eu
+          for pkg in ./cmd/mini-container ./cmd/mini-container-launcher; do
+            test -d "$pkg" || { echo "missing command directory: $pkg"; exit 1; }
+          done
+          # Every published target must keep compiling, including the non-Linux
+          # stub that replaces the runtime where its syscalls do not exist.
           for target in linux/amd64 linux/arm64 windows/amd64 windows/arm64 darwin/amd64 darwin/arm64; do
-            echo "==> $target"
-            GOOS="${target%/*}" GOARCH="${target#*/}" go build -o /dev/null ./...
+            for pkg in ./cmd/mini-container ./cmd/mini-container-launcher; do
+              echo "==> $target $pkg"
+              GOOS="${target%/*}" GOARCH="${target#*/}" go build -o /dev/null "$pkg"
+            done
           done
