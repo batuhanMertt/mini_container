@@ -47,7 +47,7 @@ dist:
 	rm -rf dist && mkdir -p dist
 	@for arch in amd64 arm64; do \
 		GOOS=linux GOARCH=$$arch CGO_ENABLED=0 go build -trimpath -ldflags "$(LDFLAGS)" \
-			-o dist/$(BINARY_NAME)_linux_$$arch ./cmd/mini-container || exit 1; \
+			-o dist/$(BINARY_NAME)-runtime_linux_$$arch ./cmd/mini-container || exit 1; \
 	done
 	@for t in windows/amd64 windows/arm64 darwin/amd64 darwin/arm64 linux/amd64 linux/arm64; do \
 		os=$${t%/*}; arch=$${t#*/}; out=dist/$(BINARY_NAME)_$${os}_$${arch}; \

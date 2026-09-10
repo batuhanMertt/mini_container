@@ -36,7 +36,7 @@ jobs:
           # v2 and chroot directly.
           for arch in amd64 arm64; do
             GOOS=linux GOARCH="$arch" go build -trimpath -ldflags "$LDFLAGS" \
-              -o "dist/mini-container_linux_${arch}" ./cmd/mini-container
+              -o "dist/mini-container-runtime_linux_${arch}" ./cmd/mini-container
           done
 
           # The launcher is what Windows and macOS users download: it inspects
@@ -49,6 +49,19 @@ jobs:
             GOOS="$os" GOARCH="$arch" go build -trimpath -ldflags "$LDFLAGS" \
               -o "$out" ./cmd/mini-container-launcher
           done
+
+          # The runtime and launcher assets must never collide: a launcher
+          # published under the runtime's name would provision itself into the
+          # Linux environment and recurse. The launcher answers --version, the
+          # runtime rejects it, so this tells them apart.
+          if ./dist/mini-container-runtime_linux_amd64 --version 2>/dev/null | grep -qi launcher; then
+            echo "::error::the runtime asset is actually the launcher binary"
+            exit 1
+          fi
+          if ! ./dist/mini-container_linux_amd64 --version 2>/dev/null | grep -qi launcher; then
+            echo "::error::the launcher asset is not the launcher binary"
+            exit 1
+          fi
 
           cd dist && sha256sum * > checksums.txt && cat checksums.txt
 
@@ -70,7 +83,7 @@ jobs:
 
             On Windows and macOS the downloaded file is the **launcher**. It
             analyses your hardware, finds a Linux backend (WSL2, Lima or
-            Docker), downloads the matching `mini-container_linux_*` runtime
+            Docker), downloads the matching `mini-container-runtime_linux_*` binary
             from this release and runs the container in it.
 
             Check your machine first with `mini-container doctor`.

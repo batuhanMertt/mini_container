@@ -27,6 +27,8 @@ Grab the file for your machine from the [latest release](../../releases/latest) 
 | Linux (Intel/AMD) | `mini-container_linux_amd64` |
 | Linux (ARM) | `mini-container_linux_arm64` |
 
+Each release also carries `mini-container-runtime_linux_{amd64,arm64}`. That is the Linux runtime the launcher downloads for you; you only need it directly if you want to run the runtime yourself on a Linux box.
+
 ```console
 $ mini-container doctor          # check this machine first
 $ mini-container run /bin/sh     # start a shell inside a container
@@ -42,7 +44,7 @@ So the Windows and macOS downloads are a **launcher**. It:
 
 1. **Analyses the host** — CPU model and core count, total RAM, free disk on the cache volume, and whether hardware virtualization is available.
 2. **Finds a Linux backend** — WSL2 on Windows, Lima/Colima on macOS, or Docker on either. Docker Desktop's internal `docker-desktop` WSL distro is skipped: it is a management image, not a usable Linux userspace.
-3. **Picks the right binary** — by asking the *backend* for its architecture, not the host. An Apple Silicon Mac running an amd64 Docker VM needs `mini-container_linux_amd64`, and the host arch would be the wrong answer.
+3. **Picks the right binary** — by asking the *backend* for its architecture, not the host. An Apple Silicon Mac running an amd64 Docker VM needs `mini-container-runtime_linux_amd64`, and the host arch would be the wrong answer.
 4. **Downloads and verifies it** from this repository's GitHub Releases, caching it under the user cache directory and checking its SHA-256 against `checksums.txt`.
 5. **Provisions and launches** — pushes the runtime into the Linux environment, extracts an Alpine minirootfs beside it, and starts the container.
 
@@ -63,11 +65,11 @@ mini-container launcher v0.1.0
   backend    : wsl (Ubuntu)
   runs as    : root
   kernel arch: x86_64 -> amd64
-  selected   : mini-container_linux_amd64
+  selected   : mini-container-runtime_linux_amd64
 
 [3/4] runtime binary
   release    : v0.1.0
-  downloaded : C:\Users\you\AppData\Local\mini-container\v0.1.0\mini-container_linux_amd64 (sha256 verified)
+  downloaded : C:\Users\you\AppData\Local\mini-container\v0.1.0\mini-container-runtime_linux_amd64 (sha256 verified)
 
 [4/4] provisioning wsl (Ubuntu)
   runtime    : /root/.mini-container/mini-container
@@ -150,7 +152,7 @@ On Windows and macOS the launcher wraps this pipeline rather than changing it:
       │
       ├── hwcheck   -> CPU, RAM, disk, virtualization support
       ├── linuxenv  -> WSL2 | Lima | Docker   (backend reports its own arch)
-      ├── release   -> download + SHA-256 verify mini-container_linux_<arch>
+      ├── release   -> download + SHA-256 verify mini-container-runtime_linux_<arch>
       │
       └── [Linux environment]
            └── the pipeline above, unchanged

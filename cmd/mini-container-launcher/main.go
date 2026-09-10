@@ -33,7 +33,21 @@ const (
 // escaping on its way through wsl.exe.
 const sudoPrefix = "if [ $(id -u) -eq 0 ]; then SUDO=; else SUDO=sudo; fi; "
 
+// innerMarker is set on the process the launcher starts inside the Linux
+// environment. Reaching main() with it set means the provisioned binary is a
+// launcher rather than the runtime, so the release assets are mismatched -
+// bail out instead of downloading and re-launching ourselves forever.
+const innerMarker = "MINI_CONTAINER_INNER"
+
 func main() {
+	if os.Getenv(innerMarker) != "" {
+		fmt.Fprintf(os.Stderr,
+			"this binary is the launcher, but it was provisioned as the runtime.\n"+
+				"the release is publishing the wrong asset under %q.\n",
+			release.AssetName(runtime.GOARCH))
+		os.Exit(1)
+	}
+
 	fs := flag.NewFlagSet("mini-container", flag.ExitOnError)
 	backend := fs.String("backend", "", "force a Linux backend: wsl, lima, docker or native")
 	relTag := fs.String("release", os.Getenv("MINI_CONTAINER_RELEASE"), "release tag to use (default: latest)")
@@ -238,8 +252,10 @@ func launch(env linuxenv.Env, cmdArgs []string) error {
 		quoted[i] = shQuote(a)
 	}
 
+	// innerMarker lets the provisioned binary detect that it is the launcher
+	// rather than the runtime, instead of downloading itself and recursing.
 	script := sudoPrefix + "cd " + base + " && " +
-		"$SUDO env MINI_CONTAINER_ROOTFS=" + base + "/assets/rootfs " +
+		"$SUDO env " + innerMarker + "=1 MINI_CONTAINER_ROOTFS=" + base + "/assets/rootfs " +
 		"./mini-container run " + strings.Join(quoted, " ")
 
 	return env.Run(script)
