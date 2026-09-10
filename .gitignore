@@ -1,4 +1,6 @@
-mini-container
-mini-container-launcher
-assets/
-dist/
+# Build outputs only - anchored to the repo root so these never match
+# the cmd/mini-container and cmd/mini-container-launcher source directories.
+/mini-container
+/mini-container-launcher
+/assets/
+/dist/
